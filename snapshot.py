@@ -52,11 +52,14 @@ dest_password = args.dstpw
 ret_time = args.rt
 
 source_vol_array = args.va
+
 snap_dict = {}
 snap_time = datetime.datetime.now().strftime('%b-%d-%I%M%p-%G')
 gs_time = "gs-%s" % snap_time
 i = 0
 l = 1
+di = 0
+dl = 0
 
 # connect to source, create group snap from volume array
 # verify that each volume in the array is reporting that the snapshot from its volume is present on the destination
@@ -89,10 +92,8 @@ print("##################################################"
       "\n###########Switching to replication###############"
       "\n##################################################")
 
-di = 0
-dl = 1
 # create an array to make sure all volumes are in a safe state
-dest_vol_array = []
+dest_snap_array = []
 sfe_dest = ElementFactory.create(dest_mvip,dest_user,dest_password,print_ascii_art=False)
 snaps_dest = sfe_dest.list_snapshots()
 # rollback snapshots, you must do each volume separately
@@ -101,21 +102,19 @@ for snap2 in snaps_dest.snapshots:
     if snap2.name == 'rollback':
         sfe_dest.delete_snapshot(snap2.snapshot_id)
     if gs_time in snap2.name:
-        dest_vol_array.append(snap2.volume_id)
-        # print("vol array is %s" % dest_vol_array)
-print(dest_vol_array)
+        dest_snap_array.append(snap2.volume_id)
 
-count_snap_dest = len(dest_vol_array)
+print(dest_snap_array)
+
+count_snap_dest = len(dest_snap_array)
 if count_snap_dest != count_snap_source:
     sys.exit("Incorrect snap count, unable to proceed")
-# for dest_vol in dest_vol_array:
 check_dest_vol = sfe_dest.list_volumes()
 for vol in check_dest_vol.volumes:
-    if vol.volume_id in dest_vol_array:
+    if vol.volume_id in dest_snap_array:
         repl_status = vol.volume_pairs
-        print("verifying replication status")
+
         while "snapshot_replication=SnapshotReplication(state='Idle'" not in str(repl_status):
-            print("Sleeping as replication state is not idle")
             time.sleep(30)
             di = di + 30
             dl = dl + 1
@@ -123,10 +122,10 @@ for vol in check_dest_vol.volumes:
                   "\nLoop #%s has started" % dl)
             check_dest_vol = sfe_dest.list_volumes()
             for vol in check_dest_vol.volumes:
-                if vol.volume_id in dest_vol_array:
+                if vol.volume_id in dest_snap_array:
                     repl_status = vol.volume_pairs
                     print(vol.volume_id)
-        print("replication loop has exited, checking vol ID of %s " % vol.volume_id)
+
         key = vol.volume_id
         for snap3 in snaps_dest.snapshots:
             if snap3.snapshot_uuid == snap_dict[key]:
