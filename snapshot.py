@@ -248,7 +248,7 @@ for vol in check_dest_vol.volumes:
                     #print(repl_status)
         print(vol.volume_id)
         key = vol.volume_id
-        for key in snap_dict:
+        if key in snap_dict:
             sfe_dest.modify_volume(vol.volume_id,access="readWrite")
             sfe_dest.rollback_to_snapshot(vol.volume_id,snap3.snapshot_id,True,name="rollback")
             sfe_dest.modify_volume(vol.volume_id,access="replicationTarget")
