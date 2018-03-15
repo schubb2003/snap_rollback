@@ -82,9 +82,9 @@ for snap1 in source_snaps.snapshots:
             l = l + 1
             print(("%s seconds have elapsed" % i) + \
                   "\nLoop #%s has started" % l)
+            source_snaps = sfe_source.list_snapshots()
             for snap1 in snaps_group_source.group_snapshots:
                 gs_uuid_source = snap.group_snapshot_uuid
-                source_snaps = sfe_source.list_snapshots()
                 for snap1 in source_snaps.snapshots:
                     snap_status = snap1.remote_statuses
 
@@ -111,10 +111,12 @@ if count_snap_dest != count_snap_source:
     sys.exit("Incorrect snap count, unable to proceed")
 check_dest_vol = sfe_dest.list_volumes()
 for vol in check_dest_vol.volumes:
+    print("outer loop volume id is %s" % vol.volume_id)
     if vol.volume_id in dest_snap_array:
+        print(" inner loop volume id is %s " % vol.volume_id)
         repl_status = vol.volume_pairs
-
         while "snapshot_replication=SnapshotReplication(state='Idle'" not in str(repl_status):
+            print("Sleeping as replication state is not idle")
             time.sleep(30)
             di = di + 30
             dl = dl + 1
@@ -124,13 +126,13 @@ for vol in check_dest_vol.volumes:
             for vol in check_dest_vol.volumes:
                 if vol.volume_id in dest_snap_array:
                     repl_status = vol.volume_pairs
-                    print(vol.volume_id)
-
+        print("sub loop value is %s" % vol.volume_id)
         key = vol.volume_id
+        print("key value is %s" % key)
         for snap3 in snaps_dest.snapshots:
-            if snap3.snapshot_uuid == snap_dict[key]:
-                if key in snap_dict:
-                    snap_id = snap3.snapshot_id
-                    sfe_dest.modify_volume(key,access="readWrite")
-                    sfe_dest.rollback_to_snapshot(key,snap_id,True,name="rollback")
-                    sfe_dest.modify_volume(key,access="replicationTarget")
+                if snap3.snapshot_uuid == snap_dict[key]:
+                    if key in snap_dict:
+                        snap_id = snap3.snapshot_id
+                        sfe_dest.modify_volume(key,access="readWrite")
+                        sfe_dest.rollback_to_snapshot(key,snap_id,True,name="rollback")
+                        sfe_dest.modify_volume(key,access="replicationTarget")
