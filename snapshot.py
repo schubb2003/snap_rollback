@@ -134,7 +134,8 @@ if count_snap_dest != count_snap_source:
 check_dest_vol = sfe_dest.list_volumes(volume_ids=dest_vol_array)
 for vol in check_dest_vol.volumes:
     repl_status = vol.volume_pairs
-    while "snapshot_replication=SnapshotReplication(state='Idle'" not in str(repl_status):
+    repl_check = "snapshot_replication=SnapshotReplication(state='Idle'"
+    while repl_check not in str(repl_status):
         print("Sleeping as replication state is not idle")
         time.sleep(30)
         di = di + 30
