@@ -61,9 +61,16 @@ di = 0
 dl = 0
 
 # connect to source, create group snap from volume array
-# verify that each volume in the array is reporting that the snapshot from its volume is present on the destination
-sfe_source = ElementFactory.create(source_mvip,source_user,source_password,print_ascii_art=False)
-sfe_source.create_group_snapshot(source_vol_array,enable_remote_replication=True,retention=ret_time,name=gs_time)
+# verify that each volume in the array is reporting that the
+#    snapshot from its volume is present on the destination
+sfe_source = ElementFactory.create(source_mvip,
+                                   source_user,
+                                   source_password,
+                                   print_ascii_art=False)
+sfe_source.create_group_snapshot(source_vol_array,
+                                 enable_remote_replication=True,
+                                 retention=ret_time,
+                                 name=gs_time)
 snaps_group_source = sfe_source.list_group_snapshots(source_vol_array)
 count_snap_source = len(source_vol_array)
 
@@ -77,7 +84,8 @@ for snap in snaps_group_source.group_snapshots:
         gs_uuid_source = snap.group_snapshot_uuid
 
 source_snaps = sfe_source.list_snapshots()
-# Create loop to ensure the snapshot is seen on the destination before proceeding
+# Create loop to ensure the snapshot is seen
+#    on the destination before proceeding
 for snap1 in source_snaps.snapshots:
     if gs_time in snap1.name:
         snap_dict[snap1.volume_id] = snap1.snapshot_uuid
@@ -100,11 +108,15 @@ print("##################################################"
 
 # create an array to make sure all volumes are in a safe state
 dest_snap_array = []
-sfe_dest = ElementFactory.create(dest_mvip,dest_user,dest_password,print_ascii_art=False)
+sfe_dest = ElementFactory.create(dest_mvip,
+                                 dest_user,
+                                 dest_password,
+                                 print_ascii_art=False)
 snaps_dest = sfe_dest.list_snapshots()
 
 # rollback snapshots cleaned up, you must do each volume separately
-# verify replication state is idle, change vol to read/write, rollback, reset to replication
+# verify replication state is idle, change vol to read/write,
+#    rollback, reset to replication
 for snap2 in snaps_dest.snapshots:
     if snap2.name == 'rollback':
         sfe_dest.delete_snapshot(snap2.snapshot_id)
@@ -117,7 +129,8 @@ count_snap_dest = len(dest_snap_array)
 if count_snap_dest != count_snap_source:
     sys.exit("Incorrect snap count, unable to proceed")
 
-# Loop through volumes and ensure they are all in an idle state before proceeding with rollback
+# Loop through volumes and ensure they are all in an idle state
+#    before proceeding with rollback
 check_dest_vol = sfe_dest.list_volumes(volume_ids=dest_vol_array)
 for vol in check_dest_vol.volumes:
     repl_status = vol.volume_pairs
@@ -131,7 +144,8 @@ for vol in check_dest_vol.volumes:
         check_dest_vol = sfe_dest.list_volumes(volume_ids=dest_vol_array)
         for vol in check_dest_vol.volumes:
             repl_status = vol.volume_pairs
-    # Ensure that snapshots and volumes match, we don't want to rollback snap ID 37 on every volume with a snap ID 37
+    # Ensure that snapshots and volumes match, we don't want to rollback
+    #    snap ID 37 on every volume with a snap ID 37
     print("sub loop value is %s" % vol.volume_id)
     key = vol.volume_id
     print("key value is %s" % key)
@@ -140,8 +154,12 @@ for vol in check_dest_vol.volumes:
             if key in snap_dict:
                 snap_id = snap3.snapshot_id
                 # set volume to readWrite to stop replication
-                # create a rollback snapshot and replay the snapshot into the volume
+                # create a rollback snapshot and replay the
+                #    snapshot into the volume
                 # reset the volume to replicationTarget for normal ops
-                sfe_dest.modify_volume(key,access="readWrite")
-                sfe_dest.rollback_to_snapshot(key,snap_id,True,name="rollback")
-                sfe_dest.modify_volume(key,access="replicationTarget")
+                sfe_dest.modify_volume(key, access="readWrite")
+                sfe_dest.rollback_to_snapshot(key,
+                                              snap_id,
+                                              True,
+                                              name="rollback")
+                sfe_dest.modify_volume(key, access="replicationTarget")
