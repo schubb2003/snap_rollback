@@ -81,27 +81,26 @@ for snap in snaps_group_source.group_snapshots:
         gs_uuid_source = snap.group_snapshot_uuid
 
 for vol in src_vol_info.volumes:
-    source_snaps = sfe_source.list_snapshots(volume_id = vol.volume_id)
+    source_snaps = sfe_source.list_snapshots(volume_id=vol.volume_id)
     # Create loop to ensure the snapshot is seen
     #    on the destination before proceeding
     for snap1 in source_snaps.snapshots:
         if gs_time in snap1.name:
             snap_dict[snap1.volume_id] = snap1.snapshot_uuid
             for s in snap1.remote_statuses:
-               if s.remote_status != "Present":
-                print("Sleeping as snapshot status is: {}".format(s.remote_status))
-                time.sleep(60)
-                source_snaps = sfe_source.list_snapshots(volume_id = vol.volume_id)
-                for snap1 in snaps_group_source.group_snapshots:
-                    gs_uuid_source = snap.group_snapshot_uuid
-                    for snap1 in source_snaps.snapshots:
-                        snap_status = snap1.remote_statuses
+                if s.remote_status != "Present":
+                    print("Sleeping as snapshot"
+                          "status is: {}".format(s.remote_status))
+                    time.sleep(60)
+                    source_snaps = sfe_source.list_snapshots(volume_id=vol.volume_id)
+                    for snap1 in snaps_group_source.group_snapshots:
+                        gs_uuid_source = snap.group_snapshot_uuid
+                        for snap1 in source_snaps.snapshots:
+                            snap_status = snap1.remote_statuses
 
 print("##################################################"
       "\n###########Switching to replication###############"
       "\n##################################################")
-      
-print("snap dictionary is {}".format(snap_dict))
 
 # create an array to make sure all volumes are in a safe state
 dest_snap_array = []
@@ -123,7 +122,8 @@ for vol in check_dest_vol.volumes:
     for v in vol.volume_pairs:
         status_array = [v.remote_replication]
         while status_array[0].snapshot_replication.state != "Idle":
-            print("Sleeping as replication state is: {}".format(status_array[0].snapshot_replication.state))
+            print("Sleeping as replication state is: "
+                  "{}".format(status_array[0].snapshot_replication.state))
             time.sleep(30)
             check_dest_vol = sfe_dest.list_volumes(volume_ids=dest_vol_array)
             for vol in check_dest_vol.volumes:
@@ -133,7 +133,8 @@ for vol in check_dest_vol.volumes:
         #    snap ID 37 on every volume with a snap ID 37
         snaps_dest = sfe_dest.list_snapshots(volume_id=vol_ID)
         for snap2 in snaps_dest.snapshots:
-            print("Looping through snaps, snapshot volume is: {}".format(vol_ID))
+            print("Looping through snaps, "
+                  "snapshot volume is: {}".format(vol_ID))
             if snap2.snapshot_uuid in snap_dict.values():
                 snap_id = snap2.snapshot_id
                 # set volume to readWrite to stop replication
