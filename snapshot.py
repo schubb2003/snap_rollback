@@ -50,15 +50,12 @@ dest_password = args.dstpw
 ret_time = args.rt
 source_vol_array = args.va
 
+start_time = datetime.datetime.now()
+
 dest_vol_array = []
 snap_dict = {}
 snap_time = datetime.datetime.now().strftime('%b-%d-%G_%H-%M-%S')
 gs_time = "gs-%s" % snap_time
-# vars used below to track loops
-i = 0
-l = 1
-di = 0
-dl = 0
 
 # connect to source, create group snap from volume array
 # verify that each volume in the array is reporting that the
@@ -83,28 +80,28 @@ for snap in snaps_group_source.group_snapshots:
     if gs_time in snap.name:
         gs_uuid_source = snap.group_snapshot_uuid
 
-source_snaps = sfe_source.list_snapshots()
-# Create loop to ensure the snapshot is seen
-#    on the destination before proceeding
-for snap1 in source_snaps.snapshots:
-    if gs_time in snap1.name:
-        snap_dict[snap1.volume_id] = snap1.snapshot_uuid
-        while "remote_status='Present'" not in str(snap1.remote_statuses):
-            print("Sleeping as snapshot is not reported as present on remote")
-            time.sleep(60)
-            i = i + 60
-            l = l + 1
-            print(("%s seconds have elapsed" % i) + \
-                  "\nLoop #%s has started" % l)
-            source_snaps = sfe_source.list_snapshots()
-            for snap1 in snaps_group_source.group_snapshots:
-                gs_uuid_source = snap.group_snapshot_uuid
-                for snap1 in source_snaps.snapshots:
-                    snap_status = snap1.remote_statuses
+for vol in src_vol_info.volumes:
+    source_snaps = sfe_source.list_snapshots(volume_id = vol.volume_id)
+    # Create loop to ensure the snapshot is seen
+    #    on the destination before proceeding
+    for snap1 in source_snaps.snapshots:
+        if gs_time in snap1.name:
+            snap_dict[snap1.volume_id] = snap1.snapshot_uuid
+            for s in snap1.remote_statuses:
+               if s.remote_status != "Present":
+                print("Sleeping as snapshot status is: {}".format(s.remote_status))
+                time.sleep(60)
+                source_snaps = sfe_source.list_snapshots(volume_id = vol.volume_id)
+                for snap1 in snaps_group_source.group_snapshots:
+                    gs_uuid_source = snap.group_snapshot_uuid
+                    for snap1 in source_snaps.snapshots:
+                        snap_status = snap1.remote_statuses
 
 print("##################################################"
       "\n###########Switching to replication###############"
       "\n##################################################")
+      
+print("snap dictionary is {}".format(snap_dict))
 
 # create an array to make sure all volumes are in a safe state
 dest_snap_array = []
@@ -112,55 +109,42 @@ sfe_dest = ElementFactory.create(dest_mvip,
                                  dest_user,
                                  dest_password,
                                  print_ascii_art=False)
-snaps_dest = sfe_dest.list_snapshots()
-
-# rollback snapshots cleaned up, you must do each volume separately
-# verify replication state is idle, change vol to read/write,
-#    rollback, reset to replication
-for snap2 in snaps_dest.snapshots:
-    if snap2.name == 'rollback':
-        sfe_dest.delete_snapshot(snap2.snapshot_id)
-    if gs_time in snap2.name:
-        dest_snap_array.append(snap2.volume_id)
-
-# find snap count and compare to what was created on the source
-# exit if they do not match to preserve data integrity
-count_snap_dest = len(dest_snap_array)
-if count_snap_dest != count_snap_source:
-    sys.exit("Incorrect snap count, unable to proceed")
 
 # Loop through volumes and ensure they are all in an idle state
 #    before proceeding with rollback
 check_dest_vol = sfe_dest.list_volumes(volume_ids=dest_vol_array)
 for vol in check_dest_vol.volumes:
-    repl_status = vol.volume_pairs
-    repl_check = "snapshot_replication=SnapshotReplication(state='Idle'"
-    while repl_check not in str(repl_status):
-        print("Sleeping as replication state is not idle")
-        time.sleep(30)
-        di = di + 30
-        dl = dl + 1
-        print(("%s seconds have elapsed" % di) + \
-              "\nLoop #%s has started" % dl)
-        check_dest_vol = sfe_dest.list_volumes(volume_ids=dest_vol_array)
-        for vol in check_dest_vol.volumes:
-            repl_status = vol.volume_pairs
-    # Ensure that snapshots and volumes match, we don't want to rollback
-    #    snap ID 37 on every volume with a snap ID 37
-    print("sub loop value is %s" % vol.volume_id)
-    key = vol.volume_id
-    print("key value is %s" % key)
-    for snap3 in snaps_dest.snapshots:
-        if snap3.snapshot_uuid == snap_dict[key]:
-            if key in snap_dict:
-                snap_id = snap3.snapshot_id
+    vol_ID = vol.volume_id
+    for v in vol.volume_pairs:
+        status_array = [v.remote_replication]
+        while status_array[0].snapshot_replication.state != "Idle":
+            print("Sleeping as replication state is: {}".format(status_array[0].snapshot_replication.state))
+            time.sleep(30)
+            check_dest_vol = sfe_dest.list_volumes(volume_ids=dest_vol_array)
+            for vol in check_dest_vol.volumes:
+                for v in vol.volume_pairs:
+                    status_array = [v.remote_replication]
+        # Ensure that snapshots and volumes match, we don't want to rollback
+        #    snap ID 37 on every volume with a snap ID 37
+        snaps_dest = sfe_dest.list_snapshots(volume_id=vol_ID)
+        for snap2 in snaps_dest.snapshots:
+            print("Looping through snaps, snapshot volume is: {}".format(vol_ID))
+            if snap2.snapshot_uuid in snap_dict.values():
+                snap_id = snap2.snapshot_id
                 # set volume to readWrite to stop replication
                 # create a rollback snapshot and replay the
                 #    snapshot into the volume
                 # reset the volume to replicationTarget for normal ops
-                sfe_dest.modify_volume(key, access="readWrite")
-                sfe_dest.rollback_to_snapshot(key,
+                print("Setting read/write on {}".format(vol_ID))
+                sfe_dest.modify_volume(vol_ID, access="readWrite")
+                print("rolling back on {}".format(vol_ID))
+                sfe_dest.rollback_to_snapshot(vol_ID,
                                               snap_id,
                                               True,
                                               name="rollback")
-                sfe_dest.modify_volume(key, access="replicationTarget")
+                sfe_dest.modify_volume(vol_ID, access="replicationTarget")
+
+end_time = datetime.datetime.now()
+
+time_diff = end_time - start_time
+print("Run time was: {}".format(time_diff))
