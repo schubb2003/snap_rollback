@@ -110,11 +110,6 @@ sfe_dest = ElementFactory.create(dest_mvip,
                                  dest_password,
                                  print_ascii_art=False)
 
-# Ensure all volumes are set to replication targets, if not exit
-check_dest_vol = sfe_dest.list_volumes(volume_ids=dest_vol_array)
-for vol in check_dest_vol.volumes:
-    if vol.access != "replicationTarget":
-        sys.exit("Destination volumes are not in a replication mode")
 # Loop through volumes and ensure they are all in an idle state
 #    before proceeding with rollback
 check_dest_vol = sfe_dest.list_volumes(volume_ids=dest_vol_array)
