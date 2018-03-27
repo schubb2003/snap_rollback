@@ -53,45 +53,50 @@ source_vol_array = args.va
 start_time = datetime.datetime.now()
 
 dest_vol_array = []
-snap_uuid_dict = {}
+snap_dict = {}
 snap_time = datetime.datetime.now().strftime('%b-%d-%G_%H-%M-%S')
 gs_time = "gs-%s" % snap_time
 
 # connect to source, create group snap from volume array
 # verify that each volume in the array is reporting that the
 #    snapshot from its volume is present on the destination
-
 sfe_source = ElementFactory.create(source_mvip,
                                    source_user,
                                    source_password,
                                    print_ascii_art=False)
-group_snap = sfe_source.create_group_snapshot(source_vol_array,
+sfe_source.create_group_snapshot(source_vol_array,
                                  enable_remote_replication=True,
                                  retention=ret_time,
                                  name=gs_time)
-
-for snap in group_snap.members:
-    snap_uuid_dict[snap.volume_id]=snap.snapshot_uuid    
+snaps_group_source = sfe_source.list_group_snapshots(source_vol_array)
+count_snap_source = len(source_vol_array)
 
 src_vol_info = sfe_source.list_volumes(volume_ids=source_vol_array)
 for v in src_vol_info.volumes:
     for p in v.volume_pairs:
         dest_vol_array.append(p.remote_volume_id)
 
+for snap in snaps_group_source.group_snapshots:
+    if gs_time in snap.name:
+        gs_uuid_source = snap.group_snapshot_uuid
+
 for vol in src_vol_info.volumes:
     source_snaps = sfe_source.list_snapshots(volume_id=vol.volume_id)
     # Create loop to ensure the snapshot is seen
     #    on the destination before proceeding
     for snap1 in source_snaps.snapshots:
-        print(snap1.name)
-        for s in snap1.remote_statuses:
-            if s.remote_status != "Present":
-                print("Sleeping as snapshot"
-                      "status is: {}".format(s.remote_status))
-                time.sleep(60)
-                source_snaps = sfe_source.list_snapshots(volume_id=vol.volume_id)
-                for snap1 in source_snaps.snapshots:
-                    snap_status = snap1.remote_statuses
+        if gs_time in snap1.name:
+            snap_dict[snap1.volume_id] = snap1.snapshot_uuid
+            for s in snap1.remote_statuses:
+                if s.remote_status != "Present":
+                    print("Sleeping as snapshot"
+                          "status is: {}".format(s.remote_status))
+                    time.sleep(60)
+                    source_snaps = sfe_source.list_snapshots(volume_id=vol.volume_id)
+                    for snap1 in snaps_group_source.group_snapshots:
+                        gs_uuid_source = snap.group_snapshot_uuid
+                        for snap1 in source_snaps.snapshots:
+                            snap_status = snap1.remote_statuses
 
 print("##################################################"
       "\n###########Switching to replication###############"
@@ -130,7 +135,7 @@ for vol in check_dest_vol.volumes:
         for snap2 in snaps_dest.snapshots:
             print("Looping through snaps, "
                   "snapshot volume is: {}".format(vol_ID))
-            if snap2.snapshot_uuid in snap_uuid_dict.values():
+            if snap2.snapshot_uuid in snap_dict.values():
                 snap_id = snap2.snapshot_id
                 # set volume to readWrite to stop replication
                 # create a rollback snapshot and replay the
@@ -146,5 +151,6 @@ for vol in check_dest_vol.volumes:
                 sfe_dest.modify_volume(vol_ID, access="replicationTarget")
 
 end_time = datetime.datetime.now()
+
 time_diff = end_time - start_time
 print("Run time was: {}".format(time_diff))
