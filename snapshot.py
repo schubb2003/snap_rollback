@@ -50,11 +50,12 @@ dest_password = args.dstpw
 ret_time = args.rt
 source_vol_array = args.va
 
-start_time = datetime.datetime.now()
-
 dest_vol_array = []
 snap_uuid_dict = {}
 remote_status = ""
+# start_time is used for debugging run times,
+#   it is not required for operations
+start_time = datetime.datetime.now()
 snap_time = datetime.datetime.now().strftime('%b-%d-%G_%H-%M-%S')
 gs_time = "gs-%s" % snap_time
 
@@ -92,6 +93,9 @@ src_vol_info = sfe_source.list_volumes(volume_ids=source_vol_array)
 for v in src_vol_info.volumes:
     for p in v.volume_pairs:
         dest_vol_array.append(p.remote_volume_id)
+# source_end_time is used for debugging run times,
+#   it is not required for operations
+source_end_time = datetime.datetime.now()
 
 print("##################################################"
       "\n###########Switching to replication###############"
@@ -99,6 +103,9 @@ print("##################################################"
 
 # create an array to make sure all volumes are in a safe state
 dest_snap_array = []
+# dest_start_time is used for debugging run times,
+#   it is not required for operations
+dest_start_time = datetime.datetime.now()
 sfe_dest = ElementFactory.create(dest_mvip,
                                  dest_user,
                                  dest_password,
@@ -112,6 +119,7 @@ for vol in check_dest_vol.volumes:
         sys.exit("Destination volumes are not in a replication mode")
 # Loop through volumes and ensure they are all in an idle state
 #    before proceeding with rollback
+rollback_vol_array = []
 check_dest_vol = sfe_dest.list_volumes(volume_ids=dest_vol_array)
 for vol in check_dest_vol.volumes:
     vol_ID = vol.volume_id
@@ -129,6 +137,8 @@ for vol in check_dest_vol.volumes:
         #    snap ID 37 on every volume with a snap ID 37
         snaps_dest = sfe_dest.list_snapshots(volume_id=vol_ID)
         for snap2 in snaps_dest.snapshots:
+            if snap2.name == "rollback":
+                sfe_dest.delete_snapshot(snap2.snapshot_id)
             print("Looping through snaps, "
                   "snapshot volume is: {}".format(vol_ID))
             if snap2.snapshot_uuid in snap_uuid_dict.values():
@@ -143,9 +153,24 @@ for vol in check_dest_vol.volumes:
                 sfe_dest.rollback_to_snapshot(vol_ID,
                                               snap_id,
                                               True,
-                                              name="rollback")
+                                              name="rollback-" + gs_time)
                 sfe_dest.modify_volume(vol_ID, access="replicationTarget")
+                rollback_vol_array.append(vol_ID)
 
+if dest_vol_array != rollback_vol_array:
+    print("Error...")
+    time.sleep(300)
+    for vol in rollback_vol_array:
+        snaps_rollback = sfe_dest.list_snapshots(volume_id=vol)
+        for snap3 in snaps_rollback:
+            sfe_dest.snapshot_rollback(vol, snap3.snapshot_id,save_current_state=False)
+
+# Time outputs are used for debugging run times,
+#   they are not required for operations
 end_time = datetime.datetime.now()
-time_diff = end_time - start_time
-print("Run time was: {}".format(time_diff))
+run_time_diff = end_time - start_time
+start_time_diff = source_end_time - start_time
+dest_time_diff = end_time - dest_start_time
+print("Source side run time was: {}".format(start_time_diff))
+print("Desitnation side run time was: {}".format(dest_time_diff))
+print("Run time was: {}".format(run_time_diff))
