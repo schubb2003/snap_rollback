@@ -52,7 +52,7 @@ source_vol_array = args.va
 
 dest_vol_array = []
 snap_uuid_dict = {}
-remote_status = ""
+remote_status = []
 # start_time is used for debugging run times,
 #   it is not required for operations
 start_time = datetime.datetime.now()
@@ -81,12 +81,13 @@ gs_id = group_snap.group_snapshot_id
 # for snap in snap_check.group_snapshots:
     # for s in snap.members:
         # remote_status = s.remote_status
-while remote_status != "Present":
+while "Unknown" or "NotPresent" or "Syncing" in remote_status:
     time.sleep(60)
+    print("Sleeping for 60 while snap status is not 100% present on the destination")
     snap_check = sfe_source.list_group_snapshots(group_snapshot_id=gs_id)
     for snap in snap_check.group_snapshots:
         for s in snap.members:
-            remote_status = s.remote_status
+            remote_status.append(s.remote_status)
             print("Remote snap status is {}".format(s.remote_status))
 
 src_vol_info = sfe_source.list_volumes(volume_ids=source_vol_array)
@@ -137,7 +138,7 @@ for vol in check_dest_vol.volumes:
         #    snap ID 37 on every volume with a snap ID 37
         snaps_dest = sfe_dest.list_snapshots(volume_id=vol_ID)
         for snap2 in snaps_dest.snapshots:
-            if snap2.name == "rollback":
+            if "rollback-" in snap2.name:
                 sfe_dest.delete_snapshot(snap2.snapshot_id)
             print("Looping through snaps, "
                   "snapshot volume is: {}".format(vol_ID))
