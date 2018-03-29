@@ -81,7 +81,7 @@ gs_id = group_snap.group_snapshot_id
 # for snap in snap_check.group_snapshots:
     # for s in snap.members:
         # remote_status = s.remote_status
-while "Unknown" or "NotPresent" or "Syncing" in remote_status:
+while "Unknown" or "NotPresent" or "Syncing" or "None" in remote_status:
     time.sleep(60)
     print("Sleeping for 60 while snap status is not 100% present on the destination")
     snap_check = sfe_source.list_group_snapshots(group_snapshot_id=gs_id)
