@@ -245,3 +245,6 @@ for vol in dest_vol_details:
                     continue
                 else:
                     sys.exit("Unhandled exception")
+
+if __name__ == "__main__":
+    main()
