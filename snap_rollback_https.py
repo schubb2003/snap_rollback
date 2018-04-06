@@ -173,78 +173,107 @@ print("##################################################"
       "\n###########Switching to replication###############"
       "\n##################################################")
 
-dest_snap_array = []
-rollback_vol_array = []
-# print("Destination volume IDs are: {}".format(dest_vol_array))
+def main():
+    dest_snap_array = []
+    rollback_vol_array = []
+    # print("Destination volume IDs are: {}".format(dest_vol_array))
 
-# Get destination volume information for processing
-dest_jsonData=json.dumps({"method": "ListVolumes","params": {"volumeIDs": dest_vol_array }, "id": 1})
-dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
-dest_vol_details=dest_response['volumes']
-# Loop through volumes to determine if they are in a state to replicate
-for vol in dest_vol_details:
-    if vol['access'] != 'replicationTarget':
-        sys.exit("Destination volumes are not in a replication state")
-    else:
-        for pair in vol['volumePairs']:
-            current = (pair['remoteReplication']['snapshotReplication'])
-            # Ensure volume is idle and ready to rollback
-            while current['state'] != "Idle":
-                status_array=[]
-                dest_jsonData=json.dumps({"method": "ListVolumes","params": {"volumeIDs": dest_vol_array }, "id": 1})
+    # Get destination volume information for processing
+    dest_jsonData=json.dumps({"method": "ListVolumes","params": {"volumeIDs": dest_vol_array }, "id": 1})
+    dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
+    dest_vol_details=dest_response['volumes']
+    # Loop through volumes to determine if they are in a state to replicate
+    for vol in dest_vol_details:
+        if vol['access'] != 'replicationTarget':
+            sys.exit("Destination volumes are not in a replication state")
+        else:
+            for pair in vol['volumePairs']:
+                current = (pair['remoteReplication']['snapshotReplication'])
+                # Ensure volume is idle and ready to rollback
+                while current['state'] != "Idle":
+                    status_array=[]
+                    dest_jsonData=json.dumps({"method": "ListVolumes","params": {"volumeIDs": dest_vol_array }, "id": 1})
+                                                                                                
+                                                         
+                                         
+                              
+                                                                                            
+                                                                                                                  
+                                                                                            
+                                                        
+                                          
+                                                                       
+                                                   
+                                                      
+                                                                          
+                                                          
+                                                                
+                                                                           
+                                                                   
+                                                               
+                                                               
+                                                                  
+                                               
+                                                                                                                                 
+                                                                                                    
+                                                                
+                                                                                                              
+                                           
+                                                                                                           
+                                                                                                                                                 
+                    dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
+                    dest_vol_details=dest_response['volumes']
+                    status_array.append(item)
+                    time.sleep(60)
+                # List snaps to do the rollback if they match vol/snap vol ID and snapshot UUIDs
+                dest_jsonData=json.dumps({"method": "ListSnapshots","params": {"volumeID": vol['volumeID']}, "id": 1})
                 dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
-                dest_vol_details=dest_response['volumes']
-                status_array.append(item)
-                time.sleep(60)
-            # List snaps to do the rollback if they match vol/snap vol ID and snapshot UUIDs
-            dest_jsonData=json.dumps({"method": "ListSnapshots","params": {"volumeID": vol['volumeID']}, "id": 1})
-            dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
-            dest_snap_details=dest_response['snapshots']
-            for snap in dest_snap_details:
-                # This section just prints the snap info for comparison
-                # print("**********\n**********\n" 
-                      # "Snap dictionary contains: {}"
-                      # "\n**********\n**********".format(snap_uuid_dict))
-                # print("**********\nSnapshot UUID is: {}"
-                      # "\n**********\nSnapshot volume ID is {}"
-                      # "\n**********\n**********\nVolume ID in loop is {}"
-                      # "\n**********".format(snap['snapshotUUID'],
-                                            # snap['volumeID'],
-                                            # vol['volumeID']))
-                # Remove previous rollback snapshots if they exist
-                if "-rollback" in snap['name']:
-                    dest_jsonData=json.dumps({"method": "DeleteSnapshot","params": {"snapshotID": snap['snapshotID'] }, "id": 1})
-                    dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
-                    #dest_snap_details=dest_response['snapshot']
-                # Compare vol/snap vol, then snapshot UUID to ensure we are doing the work on the right volume
-                #   with the right snapshot
-                elif snap['snapshotUUID'] in snap_uuid_dict.keys() and snap['volumeID'] == vol['volumeID']:
-                    dest_jsonData=json.dumps({"method": "ModifyVolume","params": {"volumeID": snap['volumeID'],"access": "readWrite" }, "id": 1})
-                    dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
-                    mod_vol_details=dest_response['volume']
-                    # If the volume is in a readWrite state, fail out
-                    if mod_vol_details['access'] != 'readWrite':
-                        sys.exit("Volume in incorrect state, not readWrite.  \nState is {}".format(mod_vol_details['access']))
-                    # If the volume is not readWrite, change it to readWrite and rollback
-                    # This may seem to contradict the above section, but it does not.  We want the volume to be replicationTarget
-                    #   as it means it is replicating.  However we need to change it to readWrite to roll the snapshot back
-                    else:   
-                        dest_jsonData=json.dumps({"method": "RollbackToSnapshot","params": {"volumeID": snap['volumeID'],"snapshotID": snap['snapshotID'], "saveCurrentState": confirm_true,"name": rollback_name }, "id": 1})
+                dest_snap_details=dest_response['snapshots']
+                for snap in dest_snap_details:
+                    # This section just prints the snap info for comparison
+                    # print("**********\n**********\n" 
+                          # "Snap dictionary contains: {}"
+                          # "\n**********\n**********".format(snap_uuid_dict))
+                    # print("**********\nSnapshot UUID is: {}"
+                          # "\n**********\nSnapshot volume ID is {}"
+                          # "\n**********\n**********\nVolume ID in loop is {}"
+                          # "\n**********".format(snap['snapshotUUID'],
+                                                # snap['volumeID'],
+                                                # vol['volumeID']))
+                    # Remove previous rollback snapshots if they exist
+                    if "-rollback" in snap['name']:
+                        dest_jsonData=json.dumps({"method": "DeleteSnapshot","params": {"snapshotID": snap['snapshotID'] }, "id": 1})
                         dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
-                        rollback_details=dest_response['snapshot']
-                        # Fail the script if the rollback failed for some reason
-                        if rollback_details['status'] != 'done':
-                            sys.exit("Error in rollback")
-                        print("*********\nRollback complete on: {}\n**********".format(vol['name']))
-                    # Reset vol to replicationTarget so replication can continue
-                    dest_jsonData=json.dumps({"method": "ModifyVolume","params": {"volumeID": snap['volumeID'],"access": "replicationTarget" }, "id": 1})
-                    dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
-                    mod_vol_details=dest_response['volume']
-                # If snap UUID not found in dictionary, restart loop with next snap
-                elif snap['snapshotUUID'] not in snap_uuid_dict.keys():
-                    continue
-                else:
-                    sys.exit("Unhandled exception")
-
+                        #dest_snap_details=dest_response['snapshot']
+                    # Compare vol/snap vol, then snapshot UUID to ensure we are doing the work on the right volume
+                    #   with the right snapshot
+                    elif snap['snapshotUUID'] in snap_uuid_dict.keys() and snap['volumeID'] == vol['volumeID']:
+                        dest_jsonData=json.dumps({"method": "ModifyVolume","params": {"volumeID": snap['volumeID'],"access": "readWrite" }, "id": 1})
+                        dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
+                        mod_vol_details=dest_response['volume']
+                        # If the volume is in a readWrite state, fail out
+                        if mod_vol_details['access'] != 'readWrite':
+                            sys.exit("Volume in incorrect state, not readWrite.  \nState is {}".format(mod_vol_details['access']))
+                        # If the volume is not readWrite, change it to readWrite and rollback
+                        # This may seem to contradict the above section, but it does not.  We want the volume to be replicationTarget
+                        #   as it means it is replicating.  However we need to change it to readWrite to roll the snapshot back
+                        else:   
+                            dest_jsonData=json.dumps({"method": "RollbackToSnapshot","params": {"volumeID": snap['volumeID'],"snapshotID": snap['snapshotID'], "saveCurrentState": confirm_true,"name": rollback_name }, "id": 1})
+                            dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
+                            rollback_details=dest_response['snapshot']
+                            # Fail the script if the rollback failed for some reason
+                            if rollback_details['status'] != 'done':
+                                sys.exit("Error in rollback")
+                            print("*********\nRollback complete on: {}\n**********".format(vol['name']))
+                        # Reset vol to replicationTarget so replication can continue
+                        dest_jsonData=json.dumps({"method": "ModifyVolume","params": {"volumeID": snap['volumeID'],"access": "replicationTarget" }, "id": 1})
+                        dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
+                        mod_vol_details=dest_response['volume']
+                    # If snap UUID not found in dictionary, restart loop with next snap
+                    elif snap['snapshotUUID'] not in snap_uuid_dict.keys():
+                        continue
+                    else:
+                        sys.exit("Unhandled exception")
+                        
 if __name__ == "__main__":
     main()
