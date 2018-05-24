@@ -136,44 +136,44 @@ def destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData):
     else:
         return jsonResponse['result']
 
-jsonData=json.dumps({"method": "CreateGroupSnapshot","params": {"enableRemoteReplication": 'true', "volumes": source_vol_array, "retention": ret_time, "name": gs_time }, "id": 1})
-response=srcPost(source_mvip, murl, source_user, source_password, jsonData)
-details=response['groupSnapshot']
-gs_id=(details['groupSnapshotID'])
-
-# Build a dictionary of snapshot UUID to ensure we have the snaps later
-for member in details['members']:
-    snap_uuid_dict[member["snapshotUUID"]]=member["volumeID"]
-
-# set remote_status to start while loop
-remote_status = ["Unknown"]
-# Loop waits for the snapshot to be replicated before proceeding
-while "Unknown" in remote_status or "NotPresent" in remote_status or "Syncing" in remote_status or "None" in remote_status:
-    remote_status = []
-    print("**********\nSleeping 60 seconds to wait for snap to replicate\n**********")
-    time.sleep(60)
-    jsonData=json.dumps({"method": "ListGroupSnapshots","params": {"groupSnapshotID": gs_id }, "id": 1})
-    response=srcPost(source_mvip, murl, source_user, source_password, jsonData)
-    snap_state_details=response['groupSnapshots']
-    for snap in snap_state_details:
-        for member in snap['members']:
-            remote_status.append(member['remoteStatus'])
-    # prints our status instead of having to guess what it is
-    print("##########\nremote status is: {}\n##########".format(remote_status))
-
-# Get the remove volume pair IDs for matching vol info later on 
-jsonData=json.dumps({"method": "ListVolumes","params": {"volumeIDs": source_vol_array }, "id": 1})
-response=srcPost(source_mvip, murl, source_user, source_password, jsonData)
-remote_vol_details=response['volumes']
-for vol in remote_vol_details:
-    for remote in vol['volumePairs']:
-        dest_vol_array.append(remote['remoteVolumeID'])
-
-print("##################################################"
-      "\n###########Switching to replication###############"
-      "\n##################################################")
-
 def main():
+    jsonData=json.dumps({"method": "CreateGroupSnapshot","params": {"enableRemoteReplication": 'true', "volumes": source_vol_array, "retention": ret_time, "name": gs_time }, "id": 1})
+    response=srcPost(source_mvip, murl, source_user, source_password, jsonData)
+    details=response['groupSnapshot']
+    gs_id=(details['groupSnapshotID'])
+
+    # Build a dictionary of snapshot UUID to ensure we have the snaps later
+    for member in details['members']:
+        snap_uuid_dict[member["snapshotUUID"]]=member["volumeID"]
+
+    # set remote_status to start while loop
+    remote_status = ["Unknown"]
+    # Loop waits for the snapshot to be replicated before proceeding
+    while "Unknown" in remote_status or "NotPresent" in remote_status or "Syncing" in remote_status or "None" in remote_status:
+        remote_status = []
+        print("**********\nSleeping 60 seconds to wait for snap to replicate\n**********")
+        time.sleep(60)
+        jsonData=json.dumps({"method": "ListGroupSnapshots","params": {"groupSnapshotID": gs_id }, "id": 1})
+        response=srcPost(source_mvip, murl, source_user, source_password, jsonData)
+        snap_state_details=response['groupSnapshots']
+        for snap in snap_state_details:
+            for member in snap['members']:
+                remote_status.append(member['remoteStatus'])
+        # prints our status instead of having to guess what it is
+        print("##########\nremote status is: {}\n##########".format(remote_status))
+
+    # Get the remove volume pair IDs for matching vol info later on 
+    jsonData=json.dumps({"method": "ListVolumes","params": {"volumeIDs": source_vol_array }, "id": 1})
+    response=srcPost(source_mvip, murl, source_user, source_password, jsonData)
+    remote_vol_details=response['volumes']
+    for vol in remote_vol_details:
+        for remote in vol['volumePairs']:
+            dest_vol_array.append(remote['remoteVolumeID'])
+
+    print("##################################################"
+          "\n###########Switching to replication###############"
+          "\n##################################################")
+
     dest_snap_array = []
     rollback_vol_array = []
     # print("Destination volume IDs are: {}".format(dest_vol_array))
@@ -193,34 +193,6 @@ def main():
                 while current['state'] != "Idle":
                     status_array=[]
                     dest_jsonData=json.dumps({"method": "ListVolumes","params": {"volumeIDs": dest_vol_array }, "id": 1})
-                                                                                                
-                                                         
-                                         
-                              
-                                                                                            
-                                                                                                                  
-                                                                                            
-                                                        
-                                          
-                                                                       
-                                                   
-                                                      
-                                                                          
-                                                          
-                                                                
-                                                                           
-                                                                   
-                                                               
-                                                               
-                                                                  
-                                               
-                                                                                                                                 
-                                                                                                    
-                                                                
-                                                                                                              
-                                           
-                                                                                                           
-                                                                                                                                                 
                     dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
                     dest_vol_details=dest_response['volumes']
                     status_array.append(item)
