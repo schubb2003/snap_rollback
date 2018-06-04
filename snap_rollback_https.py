@@ -93,13 +93,11 @@ def srcPost(source_mvip, murl, source_user, source_password, jsonData):
         jsonResponse=json.loads(response.text)
         #print("Response in try: " + response.text)
     except:
-        sys.exit("Unable to connect to host: " + source_mvip) 
-        sys.exit("Warning in except" + response.text)
+        sys.exit("Unable to connect to host: " + source_mvip + "\n\tWarning in except" + response.text)
 
     #Check to see if we got a valid jsonResponse
     if 'result' not in jsonResponse:
-        sys.exit("Invalid response received.")
-        sys.exit("Response validity: " + 'result')
+        sys.exit("Invalid response received.\n\tResponse validity: " + response.text)
     else:
         return jsonResponse['result']
 
@@ -126,13 +124,11 @@ def destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData):
         jsonResponse=json.loads(dest_response.text)
         #print("Response in try: " + dest_response.text)
     except:
-        sys.exit("Unable to connect to host: " + dest_mvip) 
-        sys.exit("Warning in except" + dest_response.text)
+        sys.exit("Unable to connect to host: " + dest_mvip + "\n\tWarning in except" + dest_response.text)
 
     #Check to see if we got a valid jsonResponse
     if 'result' not in jsonResponse:
-        sys.exit("Invalid response received.")
-        sys.exit("Response validity: " + 'result')
+        sys.exit("Invalid response received.\n\tResponse validity: " + 'result')
     else:
         return jsonResponse['result']
 
