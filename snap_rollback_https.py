@@ -87,17 +87,17 @@ def srcPost(source_mvip, murl, source_user, source_password, jsonData):
         payload = (jsonData)
         ##For areas without proper certs, uncomment the line blow and comment out three lines down
         ##this line - response = requests.request("POST", url, data=payload, headers=headers)
-        response = requests.request("POST", url, data=payload, headers=headers, verify=False)
+        src_response = requests.request("POST", url, data=payload, headers=headers, verify=False)
         ##For production with proper certs uncomment the line below and comment out the line above
         #response = requests.request("POST", url, data=payload, headers=headers)
         jsonResponse=json.loads(response.text)
-        #print("Response in try: " + response.text)
+        #print("Response in try: " + src_response.text)
     except:
-        sys.exit("Unable to connect to host: " + source_mvip + "\n\tWarning in except" + response.text)
+        sys.exit("Unable to connect to host: " + source_mvip + "\n\tWarning in except" + src_response.text)
 
     #Check to see if we got a valid jsonResponse
     if 'result' not in jsonResponse:
-        sys.exit("Invalid response received.\n\tResponse validity: " + response.text)
+        sys.exit("Invalid response received.\n\tResponse validity: " + src_response.text)
     else:
         return jsonResponse['result']
 
@@ -128,7 +128,7 @@ def destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData):
 
     #Check to see if we got a valid jsonResponse
     if 'result' not in jsonResponse:
-        sys.exit("Invalid response received.\n\tResponse validity: " + 'result')
+        sys.exit("Invalid response received.\n\tResponse validity: " + dest_response.text)
     else:
         return jsonResponse['result']
 
