@@ -90,7 +90,7 @@ def srcPost(source_mvip, murl, source_user, source_password, jsonData):
         src_response = requests.request("POST", url, data=payload, headers=headers, verify=False)
         ##For production with proper certs uncomment the line below and comment out the line above
         #response = requests.request("POST", url, data=payload, headers=headers)
-        jsonResponse=json.loads(response.text)
+        jsonResponse=json.loads(src_response.text)
         #print("Response in try: " + src_response.text)
     except:
         sys.exit("Unable to connect to host: " + source_mvip + "\n\tWarning in except" + src_response.text)
