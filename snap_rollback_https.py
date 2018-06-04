@@ -191,7 +191,7 @@ def main():
                     dest_jsonData=json.dumps({"method": "ListVolumes","params": {"volumeIDs": dest_vol_array }, "id": 1})
                     dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
                     dest_vol_details=dest_response['volumes']
-                    status_array.append(item)
+                    status_array.append(dest_vol_details)
                     time.sleep(60)
                 # List snaps to do the rollback if they match vol/snap vol ID and snapshot UUIDs
                 dest_jsonData=json.dumps({"method": "ListSnapshots","params": {"volumeID": vol['volumeID']}, "id": 1})
