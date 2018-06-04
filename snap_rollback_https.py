@@ -225,7 +225,8 @@ def main():
                         # If the volume is not readWrite, change it to readWrite and rollback
                         # This may seem to contradict the above section, but it does not.  We want the volume to be replicationTarget
                         #   as it means it is replicating.  However we need to change it to readWrite to roll the snapshot back
-                        else:   
+                        else:
+                        time.sleep(5)                        
                             dest_jsonData=json.dumps({"method": "RollbackToSnapshot","params": {"volumeID": snap['volumeID'],"snapshotID": snap['snapshotID'], "saveCurrentState": confirm_true,"name": rollback_name }, "id": 1})
                             dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
                             rollback_details=dest_response['snapshot']
