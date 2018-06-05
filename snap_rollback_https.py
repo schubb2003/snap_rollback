@@ -137,17 +137,18 @@ def main():
     response=srcPost(source_mvip, murl, source_user, source_password, jsonData)
     details=response['groupSnapshot']
     gs_id=(details['groupSnapshotID'])
-
+    
     # Build a dictionary of snapshot UUID to ensure we have the snaps later
     for member in details['members']:
         snap_uuid_dict[member["snapshotUUID"]]=member["volumeID"]
-
+    snap_complete_time = datetime.datetime.now()
+    
     # set remote_status to start while loop
     remote_status = ["Unknown"]
     # Loop waits for the snapshot to be replicated before proceeding
     while "Unknown" in remote_status or "NotPresent" in remote_status or "Syncing" in remote_status or "None" in remote_status:
         remote_status = []
-        print("**********\nSleeping 60 seconds to wait for snap to replicate\n**********")
+        print("**********\nSleeping 60 seconds to wait for snap replication\n**********")
         time.sleep(60)
         jsonData=json.dumps({"method": "ListGroupSnapshots","params": {"groupSnapshotID": gs_id }, "id": 1})
         response=srcPost(source_mvip, murl, source_user, source_password, jsonData)
@@ -157,7 +158,8 @@ def main():
                 remote_status.append(member['remoteStatus'])
         # prints our status instead of having to guess what it is
         print("##########\nremote status is: {}\n##########".format(remote_status))
-
+    snap_transfer_time = datetime.datetime.now()
+    
     # Get the remove volume pair IDs for matching vol info later on 
     jsonData=json.dumps({"method": "ListVolumes","params": {"volumeIDs": source_vol_array }, "id": 1})
     response=srcPost(source_mvip, murl, source_user, source_password, jsonData)
@@ -179,6 +181,7 @@ def main():
     dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
     dest_vol_details=dest_response['volumes']
     # Loop through volumes to determine if they are in a state to replicate
+    rollback_start = datetime.datetime.now()
     for vol in dest_vol_details:
         if vol['access'] != 'replicationTarget':
             sys.exit("Destination volumes are not in a replication state")
@@ -226,7 +229,7 @@ def main():
                         # This may seem to contradict the above section, but it does not.  We want the volume to be replicationTarget
                         #   as it means it is replicating.  However we need to change it to readWrite to roll the snapshot back
                         else:
-                        time.sleep(5)                        
+                            time.sleep(3)                        
                             dest_jsonData=json.dumps({"method": "RollbackToSnapshot","params": {"volumeID": snap['volumeID'],"snapshotID": snap['snapshotID'], "saveCurrentState": confirm_true,"name": rollback_name }, "id": 1})
                             dest_response=destPost(dest_mvip, murl, dest_user, dest_password, dest_jsonData)
                             rollback_details=dest_response['snapshot']
@@ -243,6 +246,34 @@ def main():
                         continue
                     else:
                         sys.exit("Unhandled exception")
-                        
+    end_time = datetime.datetime.now()
+    
+    total_time = end_time - start_time
+    total_time_minutes = total_time.seconds // 60
+    total_time_seconds = total_time.seconds % 60
+    snap_total_time = snap_complete_time - start_time
+    snap_total_time_minutes = snap_total_time.seconds // 60
+    snap_total_time_seconds = snap_total_time.seconds % 60
+    transfer_total_time = snap_transfer_time - start_time
+    transfer_total_time_minutes = transfer_total_time.seconds // 60
+    transfer_total_time_seconds = transfer_total_time.seconds % 60
+    rollback_total_time  = end_time - rollback_start
+    rollback_total_time_minutes = rollback_total_time.seconds // 60
+    rollback_total_time_seconds = rollback_total_time.seconds % 60
+    
+    print("Times reported are: \n\tTotal time: {} minutes and {} seconds "
+          "\n\tTime creating snapshot: {} minutes and {} seconds "
+          "\n\tTime in rollback phase: {} minutes and {} seconds "
+          "\n\tTotal time in transfer: {} minutes and {} seconds".format(total_time_minutes,
+                                                                         total_time_seconds,
+                                                                         snap_total_time_minutes,
+                                                                         snap_total_time_seconds,
+                                                                         rollback_total_time_minutes,
+                                                                         rollback_total_time_seconds,
+                                                                         transfer_total_time_minutes,
+                                                                         transfer_total_time_seconds
+                                                                        )
+    )
+    
 if __name__ == "__main__":
     main()
